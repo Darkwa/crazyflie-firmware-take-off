@@ -62,7 +62,7 @@ static float positionZ = 0.0;
 static float auto_take_off = 0.0;
 
 // Maximum roll/pitch angle permited
-static float rpLimit = 5;
+static float rpLimit = 20;
 
 #define DT 0.01
 
@@ -74,7 +74,8 @@ static struct this_s this = {
       .kp = 25,
       .ki = 0.28,
       .kd = 7
-    }
+    },
+    .pid.dt = DT,
   },
 
   .pidY = {
@@ -82,7 +83,8 @@ static struct this_s this = {
       .kp = 25,
       .ki = 0.28,
       .kd = 7
-    }
+    },
+    .pid.dt = DT,
   },
 
   .pidZ = {
@@ -90,7 +92,8 @@ static struct this_s this = {
       .kp = 30000.0,
       .ki = 0,
       .kd = 10000.0
-    }
+    },
+    .pid.dt = DT,
   },
 
   .thrustBase = 36000,
@@ -146,6 +149,9 @@ void positionController(float* thrust, attitude_t *attitude, const state_t *stat
 positionZ = state->position.z;
   float newThrust = runPid(state->position.z, &this.pidZ, setpoint->mode.z, setpoint->position.z, setpoint->velocity.z, DT);
   *thrust = newThrust + this.thrustBase;
+  if (*thrust > 45000) {
+    *thrust = 45000;
+  }
 }
 
 

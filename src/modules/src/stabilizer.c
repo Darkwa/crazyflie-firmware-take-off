@@ -35,11 +35,16 @@
 #include "stabilizer.h"
 
 #include "sensors.h"
-#include "estimator.h"
 #include "commander.h"
 #include "sitaw.h"
 #include "controller.h"
 #include "power_distribution.h"
+
+#ifdef ESTIMATOR_TYPE_kalman
+#include "estimator_kalman.h"
+#else
+#include "estimator.h"
+#endif
 
 static bool isInit;
 
@@ -82,10 +87,11 @@ bool stabilizerTest(void)
   return pass;
 }
 
-/* The stabilizer loop runs at 1kHz. It is the responsability or the different
- * functions to run slower by skipping call (ie. returning without modifying
- * the output structure).
+/* The stabilizer loop runs at 1kHz (stock) or 500Hz (kalman). It is the
+ * responsibility of the different functions to run slower by skipping call
+ * (ie. returning without modifying the output structure).
  */
+
 static void stabilizerTask(void* param)
 {
   uint32_t tick = 0;
@@ -104,9 +110,13 @@ static void stabilizerTask(void* param)
   while(1) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
 
+#ifdef ESTIMATOR_TYPE_kalman
+    stateEstimatorUpdate(&state, &sensorData, &control);
+#else
     sensorsAcquire(&sensorData, tick);
-
     stateEstimator(&state, &sensorData, tick);
+#endif
+
     commanderGetSetpoint(&setpoint, &state);
 
     sitAwUpdateSetpoint(&setpoint, &sensorData, &state);

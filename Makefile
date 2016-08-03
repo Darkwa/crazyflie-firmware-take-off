@@ -263,7 +263,7 @@ ifeq ($(USE_ESKYLINK), 1)
   CFLAGS += -DUSE_ESKYLINK
 endif
 
-CFLAGS += -DBOARD_REV_$(REV)
+CFLAGS += -DBOARD_REV_$(REV) -DSENSORS_TYPE_$(SENSORS) -DESTIMATOR_TYPE_$(ESTIMATOR) -DCONTROLLER_TYPE_$(CONTROLLER) -DPOWER_DISTRIBUTION_TYPE_$(POWER_DISTRIBUTION)
 
 CFLAGS += $(PROCESSOR) $(INCLUDES) $(STFLAGS)
 ifeq ($(PLATFORM), CF1)
@@ -273,7 +273,7 @@ ifeq ($(PLATFORM), CF2)
 CFLAGS += $(INCLUDES_CF2) $(STFLAGS_CF2)
 endif
 
-CFLAGS += -Wall -fno-strict-aliasing $(C_PROFILE)
+CFLAGS += -Wall -Wmissing-braces -fno-strict-aliasing $(C_PROFILE) -std=gnu11
 # Compiler flags to generate dependency files:
 CFLAGS += -MD -MP -MF $(BIN)/dep/$(@).d -MQ $(@)
 #Permits to remove un-used functions and global variables from output file

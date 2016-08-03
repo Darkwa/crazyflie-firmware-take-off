@@ -78,6 +78,7 @@ static bool isInactive;
 static bool thrustLocked;
 static bool altHoldMode = false;
 static bool posHoldMode = false;
+static bool posSetMode = false;
 
 static RPYType stabilizationModeRoll  = ANGLE; // Current stabilization type of roll (rate or angle)
 static RPYType stabilizationModePitch = ANGLE; // Current stabilization type of pitch (rate or angle)
@@ -327,6 +328,22 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
     setpoint->velocity.y = commanderGetActiveRoll()/30.0f;
     setpoint->attitude.roll  = 0;
     setpoint->attitude.pitch = 0;
+  } else if (posSetMode && commanderGetActiveThrust() != 0) {
+    setpoint->mode.x = modeAbs;
+    setpoint->mode.y = modeAbs;
+    setpoint->mode.z = modeAbs;
+    setpoint->mode.roll = modeDisable;
+    setpoint->mode.pitch = modeDisable;
+    setpoint->mode.yaw = modeAbs;
+
+    setpoint->position.x = -commanderGetActivePitch();
+    setpoint->position.y = commanderGetActiveRoll();
+    setpoint->position.z = commanderGetActiveThrust()/1000.0f;
+
+    setpoint->attitude.roll  = 0;
+    setpoint->attitude.pitch = 0;
+    setpoint->attitude.yaw = commanderGetActiveYaw();
+    setpoint->thrust = 0;
   } else {
     setpoint->mode.x = modeDisable;
     setpoint->mode.y = modeDisable;
@@ -356,16 +373,19 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
   }
 
   // Yaw
-  setpoint->attitudeRate.yaw  = commanderGetActiveYaw();
-  yawModeUpdate(setpoint, state);
+  if (!posSetMode) {
+    setpoint->attitudeRate.yaw  = commanderGetActiveYaw();
+    yawModeUpdate(setpoint, state);
 
-  setpoint->mode.yaw = modeVelocity;
+    setpoint->mode.yaw = modeVelocity;
+  }
 }
 
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
 PARAM_ADD(PARAM_UINT8, poshold, &posHoldMode)
+PARAM_ADD(PARAM_UINT8, posSet, &posSetMode)
 PARAM_ADD(PARAM_UINT8, yawMode, &yawMode)
 PARAM_ADD(PARAM_UINT8, yawRst, &carefreeResetFront)
 PARAM_ADD(PARAM_UINT8, stabModeRoll, &stabilizationModeRoll)
