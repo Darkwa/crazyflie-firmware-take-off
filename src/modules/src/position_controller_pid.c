@@ -57,6 +57,9 @@ struct this_s {
 
   uint16_t thrustBase; // approximate throttle needed when in perfect hover. More weight/older battery can use a higher value
 };
+//Ajout de variable pour monitoring
+static float positionZ = 0.0;
+static float auto_take_off = 0.0;
 
 // Maximum roll/pitch angle permited
 static float rpLimit = 5;
@@ -96,28 +99,34 @@ static struct this_s this = {
 
 static float runPid(float input, struct pidAxis_s *axis, mode_t mode,
                     float setpointPos, float setpointVel, float dt) {
-  if (axis->previousMode == modeDisable && mode != modeDisable) {
-    if (mode == modeVelocity) {
-      axis->setpoint = input;
+  if (axis->previousMode == modeDisable && mode != modeDisable) {//Si le mode de vol a changé
+    if (mode == modeVelocity) {//Et que le nouveau mode est le mode althold
+      axis->setpoint = input+auto_take_off;//On règle l'altitude de référence ?
     } else {
       axis->setpoint = setpointPos;
     }
+    //Ensuite on réinitialise le PID
     pidInit(&axis->pid, axis->setpoint, axis->init.kp, axis->init.ki, axis->init.kd, dt);
   }
-  axis->previousMode = mode;
+  axis->previousMode = mode;//Dans tous les cas, le nouveau mode devient le précédent
 
   // This is a position controller so if the setpoint is in velocity we
   // integrate it to get a position setpoint
   if (mode == modeAbs) {
     axis->setpoint = setpointPos;
-  } else if (mode == modeVelocity) {
-    axis->setpoint += setpointVel * dt;
+  } else if (mode == modeVelocity) {//Si on est en mode althold
+    axis->setpoint += setpointVel * dt;//Alors on les commandes de thrust incrémentent l'altitude de référence
   }
 
   pidSetDesired(&axis->pid, axis->setpoint);
   return pidUpdate(&axis->pid, input, true);
 }
 
+/**
+ * *state : structure contenant l'état du quad : position dans l'espace, inclinaisons, vitesses, accélérations (x, y, z)
+ * *setpoint : structure contenant le mode de pilotage de tous les axes et toutes les rotations, l'attitude voulue,
+ *             l'attitude-rate voulu, le thrust voulu, la position et les vitesses voulues.
+ */
 void positionController(float* thrust, attitude_t *attitude, const state_t *state,
                                                              const setpoint_t *setpoint)
 {
@@ -133,6 +142,8 @@ void positionController(float* thrust, attitude_t *attitude, const state_t *stat
   attitude->pitch = max(min(attitude->pitch, rpLimit), -rpLimit);
 
   // Z
+  //A chaque fois que la fonction est appelée, le nouveau thrust nécessaire est calculé
+positionZ = state->position.z;
   float newThrust = runPid(state->position.z, &this.pidZ, setpoint->mode.z, setpoint->position.z, setpoint->velocity.z, DT);
   *thrust = newThrust + this.thrustBase;
 }
@@ -166,3 +177,14 @@ PARAM_ADD(PARAM_UINT16, thrustBase, &this.thrustBase)
 
 PARAM_ADD(PARAM_FLOAT, rpLimit, &rpLimit)
 PARAM_GROUP_STOP(posCtlPid)
+
+//LOG & PARAM pour auto-take-off
+
+LOG_GROUP_START(essaiTakeOff)
+LOG_ADD(LOG_FLOAT, targetZ, &this.pidZ.setpoint)
+LOG_ADD(LOG_FLOAT, positionZ, &positionZ)
+LOG_GROUP_STOP(essaiTakeOff)
+
+PARAM_GROUP_START(essaiTakeOff)
+PARAM_ADD(PARAM_FLOAT, TakeOffDist, &auto_take_off)
+PARAM_GROUP_STOP(essaiTakeOff)

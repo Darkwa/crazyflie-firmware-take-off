@@ -17,6 +17,8 @@ static bool tiltCompensationEnabled = true;
 static attitude_t attitudeDesired;
 static attitude_t rateDesired;
 static float actuatorThrust;
+//variable ajoutée pour controler le mode de fonctionnement dans la partie LOG
+static float modeZ = 0;
 
 void stateControllerInit(void)
 {
@@ -56,7 +58,8 @@ void stateController(control_t *control, const sensorData_t *sensors,
 
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
     // Switch between manual and automatic position control
-    if (setpoint->mode.z == modeDisable) {
+	modeZ = setpoint->mode.z; //Variable de log
+    if (setpoint->mode.z == modeDisable) {//Si le controle de l'altitude est en mode "normal"
       actuatorThrust = setpoint->thrust;
     }
     if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
@@ -116,6 +119,10 @@ LOG_ADD(LOG_FLOAT, roll, &attitudeDesired.roll)
 LOG_ADD(LOG_FLOAT, pitch, &attitudeDesired.pitch)
 LOG_ADD(LOG_FLOAT, yaw, &attitudeDesired.yaw)
 LOG_GROUP_STOP(controller)
+
+LOG_GROUP_START(modeZ)
+LOG_ADD(LOG_FLOAT, modeZ, &modeZ)
+LOG_GROUP_STOP(modeZ)
 
 PARAM_GROUP_START(controller)
 PARAM_ADD(PARAM_UINT8, tiltComp, &tiltCompensationEnabled)

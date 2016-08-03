@@ -32,7 +32,9 @@
 #include "crtp.h"
 #include "configblock.h"
 #include "param.h"
+#include "log.h"
 #include "num.h"
+#include "console.h"
 
 #define MIN_THRUST  1000
 #define MAX_THRUST  60000
@@ -86,6 +88,8 @@ static bool carefreeResetFront;             // Reset what is front in carefree m
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderCacheSelectorUpdate(void);
+
+static bool prvAltHoldMode = false; //Ancien état de altHoldMode
 
 /* Private functions */
 static void commanderSetActiveThrust(uint16_t thrust)
@@ -288,6 +292,12 @@ uint32_t commanderGetInactivityTime(void)
 
 void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
 {
+  //print something if altHold has changed
+  if(prvAltHoldMode != altHoldMode){
+	  consolePrintf("AltHoldMode has changed!");
+	  consolePrintf("New value : %d\n", altHoldMode);
+  }
+  prvAltHoldMode = altHoldMode;
   // Thrust
   uint16_t rawThrust = commanderGetActiveThrust();
 
@@ -362,3 +372,8 @@ PARAM_ADD(PARAM_UINT8, stabModeRoll, &stabilizationModeRoll)
 PARAM_ADD(PARAM_UINT8, stabModePitch, &stabilizationModePitch)
 PARAM_ADD(PARAM_UINT8, stabModeYaw, &stabilizationModeYaw)
 PARAM_GROUP_STOP(flightmode)
+
+
+LOG_GROUP_START(althold)
+LOG_ADD(LOG_UINT8, althold, &altHoldMode)
+LOG_GROUP_STOP(althold)
